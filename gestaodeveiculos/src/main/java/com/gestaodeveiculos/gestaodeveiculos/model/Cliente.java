@@ -20,7 +20,6 @@ import java.util.Objects;
 public class Cliente {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @NotNull
     @Column(name = "id")
     private Integer id;
     @NotNull

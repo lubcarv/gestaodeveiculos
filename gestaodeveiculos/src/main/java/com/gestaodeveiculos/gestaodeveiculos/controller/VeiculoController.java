@@ -16,16 +16,13 @@ import java.util.List;
 @RequestMapping("/veiculo")
 public class VeiculoController {
     private final VeiculoRepository veiculoRepository;
-    private final MotorRepository motorRepository;
     private final ModeloRepository modeloRepository;
     private final ClienteRepository clienteRepository;
     private final CorRepository corRepository;
 
-    public VeiculoController(VeiculoRepository veiculoRepository, MotorRepository motorRepository,
-                             ModeloRepository modeloRepository, ClienteRepository clienteRepository,
-                             CorRepository corRepository) {
+    public VeiculoController(VeiculoRepository veiculoRepository, ModeloRepository modeloRepository,
+                             ClienteRepository clienteRepository, CorRepository corRepository) {
         this.veiculoRepository = veiculoRepository;
-        this.motorRepository = motorRepository;
         this.modeloRepository = modeloRepository;
         this.clienteRepository = clienteRepository;
         this.corRepository = corRepository;
@@ -33,15 +30,27 @@ public class VeiculoController {
 
     @PostMapping("/inserir")
     public ResponseEntity<VeiculoResponseDTO> inserir(@RequestBody VeiculoCreateDTO createDTO) throws Exception {
-        Motor motor = motorRepository.findById(createDTO.getMotorId())
-                .orElseThrow(() -> new Exception("Motor não encontrado"));
+        // Busca o modelo
         Modelo modelo = modeloRepository.findById(createDTO.getModeloId())
                 .orElseThrow(() -> new Exception("Modelo não encontrado"));
+
+        // Busca o motor através do modelo
+        Motor motor = modelo.getMotor();
+        if (motor == null) {
+            throw new Exception("O modelo selecionado não possui motor associado");
+        }
+
+        // Busca o cliente
         Cliente cliente = clienteRepository.findById(createDTO.getProprietarioId())
                 .orElseThrow(() -> new Exception("Cliente não encontrado"));
-        Cor cor = corRepository.findById(createDTO.getCorId())
-                .orElseThrow(() -> new Exception("Cor não encontrada"));
 
+        // Busca ou cria a cor
+        Cor cor = corRepository.findByName(createDTO.getCor())
+                .orElseGet(() -> corRepository.save(Cor.builder()
+                        .name(createDTO.getCor())
+                        .build()));
+
+        // Cria o veículo
         Veiculo veiculo = Veiculo.builder()
                 .placa(createDTO.getPlaca())
                 .observacoes(createDTO.getObservacoes())
@@ -81,28 +90,36 @@ public class VeiculoController {
         if (updateDTO.getPlaca() != null) {
             veiculoExistente.setPlaca(updateDTO.getPlaca());
         }
+
         if (updateDTO.getModeloId() != null) {
             Modelo modelo = modeloRepository.findById(updateDTO.getModeloId())
                     .orElseThrow(() -> new Exception("Modelo não encontrado"));
             veiculoExistente.setModelo(modelo);
+
+            // Atualiza o motor automaticamente através do modelo
+            Motor motor = modelo.getMotor();
+            if (motor == null) {
+                throw new Exception("O modelo selecionado não possui motor associado");
+            }
+            veiculoExistente.setMotor(motor);
         }
-        if (updateDTO.getCorId() != null) {
-            Cor cor = corRepository.findById(updateDTO.getCorId())
-                    .orElseThrow(() -> new Exception("Cor não encontrada"));
+
+        if (updateDTO.getCor() != null) {
+            Cor cor = corRepository.findByName(updateDTO.getCor())
+                    .orElseGet(() -> corRepository.save(Cor.builder()
+                            .name(updateDTO.getCor())
+                            .build()));
             veiculoExistente.setCor(cor);
         }
+
         if (updateDTO.getObservacoes() != null) {
             veiculoExistente.setObservacoes(updateDTO.getObservacoes());
         }
+
         if (updateDTO.getProprietarioId() != null) {
             Cliente cliente = clienteRepository.findById(updateDTO.getProprietarioId())
                     .orElseThrow(() -> new Exception("Cliente não encontrado"));
             veiculoExistente.setProprietario(cliente);
-        }
-        if (updateDTO.getMotorId() != null) {
-            Motor motor = motorRepository.findById(updateDTO.getMotorId())
-                    .orElseThrow(() -> new Exception("Motor não encontrado"));
-            veiculoExistente.setMotor(motor);
         }
 
         Veiculo veiculoSalvo = veiculoRepository.save(veiculoExistente);

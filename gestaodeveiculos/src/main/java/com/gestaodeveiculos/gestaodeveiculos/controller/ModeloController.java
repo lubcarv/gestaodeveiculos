@@ -92,21 +92,33 @@ public class ModeloController {
             modeloExistente.setCategoria(updateDTO.getCategoria());
         }
 
-        Motor motorExistente = motorRepository.findById(id)
-                .orElseThrow(() -> new Exception("Motor não encontrado"));
-        if (updateDTO.getPotencia() != null) {
-            motorExistente.setPotencia(updateDTO.getPotencia());
+        if (updateDTO.getPotencia() != null || updateDTO.getTipoCombustivel() != null) {
+            Optional<Motor> motorOptional = motorRepository.findById(id);
+
+            if (motorOptional.isPresent()) {
+                Motor motorExistente = motorOptional.get();
+                if (updateDTO.getPotencia() != null) {
+                    motorExistente.setPotencia(updateDTO.getPotencia());
+                }
+                if (updateDTO.getTipoCombustivel() != null) {
+                    motorExistente.setTipoCombustivel(updateDTO.getTipoCombustivel());
+                }
+                motorRepository.save(motorExistente);
+            } else {
+                Motor novoMotor = Motor.builder()
+                        .potencia(updateDTO.getPotencia())
+                        .tipoCombustivel(updateDTO.getTipoCombustivel())
+                        .modelo(modeloExistente)
+                        .build();
+                Motor motorSalvo = motorRepository.save(novoMotor);
+                modeloExistente.setMotor(motorSalvo);
+            }
         }
-        if (updateDTO.getTipoCombustivel() != null) {
-            motorExistente.setTipoCombustivel(updateDTO.getTipoCombustivel());
-        }
-        motorRepository.save(motorExistente);
 
         Modelo modeloSalvo = modeloRepository.save(modeloExistente);
         ModeloResponseDTO responseDTO = new ModeloResponseDTO(modeloSalvo);
         return ResponseEntity.ok(responseDTO);
     }
-
     @DeleteMapping("/deletar/{id}")
     public ResponseEntity<ModeloResponseDTO> deletar(@PathVariable Integer id){
         Modelo modeloSalvo = modeloRepository.findById(id)
